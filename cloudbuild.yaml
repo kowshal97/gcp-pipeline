@@ -1,27 +1,40 @@
-# cloudbuild.yaml — Phase 1 (CI only: build + push)
+# cloudbuild.yaml — Phase 2: CI (build+push) + CD (deploy)
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
   _REGION: "us-central1"
-  _REPO: "kowshal-101018751"
-  _IMAGE: "todo-kowshal-101018751"
+  _REPO: "kowshal-101018751"           # your Artifact Registry repo
+  _IMAGE: "todo-kowshal-101018751"     # image name
+  _SERVICE: "todo-kowshal-101018751"   # Cloud Run service name
 
 steps:
-  # Build Docker image
+  # Build image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - build
       - -t
-      - '${_REGION}-docker.pkg.dev/gcp-pipeline-kowshal-101018751/${_REPO}/${_IMAGE}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:${SHORT_SHA}'
       - .
 
-  # Push Docker image
+  # Push image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - push
-      - '${_REGION}-docker.pkg.dev/gcp-pipeline-kowshal-101018751/${_REPO}/${_IMAGE}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:${SHORT_SHA}'
 
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run deploy ${_SERVICE} \
+          --image ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:${SHORT_SHA} \
+          --region ${_REGION} \
+          --platform managed \
+          --allow-unauthenticated \
+          --port 3000
 images:
-  - '${_REGION}-docker.pkg.dev/gcp-pipeline-kowshal-101018751/${_REPO}/${_IMAGE}:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:${SHORT_SHA}'
