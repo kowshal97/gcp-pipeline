@@ -1,21 +1,20 @@
-# Node LTS, small image
 FROM node:20-alpine
 
 ENV NODE_ENV=production
 
-# App folder + non-root user
+# App folder
 WORKDIR /app
+
+# Copy package files and install deps as root
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source code
+COPY . .
+
+# Now drop privileges (best practice)
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
-# Install only prod deps
-COPY --chown=app:app package*.json ./
-RUN npm ci --only=production
-
-# Copy source
-COPY --chown=app:app . .
-
-# Your app uses 3000
 EXPOSE 3000
-
 CMD ["node", "src/index.js"]
